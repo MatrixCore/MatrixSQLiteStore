@@ -1,0 +1,23 @@
+{
+  "pins" : [
+    {
+      "identity" : "anycodable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Flight-School/AnyCodable",
+      "state" : {
+        "revision" : "11423ef0c756e8a1f6b4bb576dab9d97bc016c70",
+        "version" : "0.6.4"
+      }
+    },
+    {
+      "identity" : "grdb.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/groue/GRDB.swift.git",
+      "state" : {
+        "revision" : "4472d3a60ec4cc383503eba5072ce17f781b9ddc",
+        "version" : "5.23.0"
+      }
+    }
+  ],
+  "version" : 2
+}
