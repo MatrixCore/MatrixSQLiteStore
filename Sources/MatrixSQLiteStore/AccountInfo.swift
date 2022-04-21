@@ -11,11 +11,27 @@ import MatrixClient
 import MatrixCore
 
 public struct MatrixSQLAccountInfo: MatrixStoreAccountInfo {
+    public init(
+        name: String,
+        displayName: String? = nil,
+        mxID: MatrixFullUserIdentifier,
+        homeServer: MatrixHomeserver,
+        accessToken: String? = nil
+    ) {
+        self.name = name
+        self.displayName = displayName
+        self.mxID = mxID
+        self.homeServer = homeServer
+        self.accessToken = accessToken
+    }
+
+    public typealias AccountIdentifier = MatrixFullUserIdentifier
+
     public var name: String
 
     public var displayName: String?
 
-    public var mxID: MatrixUserIdentifier
+    public var mxID: MatrixFullUserIdentifier
 
     public var homeServer: MatrixHomeserver
 

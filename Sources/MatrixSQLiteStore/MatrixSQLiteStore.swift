@@ -9,6 +9,19 @@ public struct MatrixSQLiteStore {
 
     public init(_ dbWriter: DatabaseWriter) throws {
         self.dbWriter = dbWriter
+        try migrate()
+    }
+
+    public init(path: String) throws {
+        dbWriter = try DatabasePool(path: path)
+        try migrate()
+    }
+
+    public static func inMemory() -> Self {
+        try! MatrixSQLiteStore(DatabaseQueue())
+    }
+
+    private func migrate() throws {
         try migrator.migrate(dbWriter)
     }
 
@@ -43,9 +56,9 @@ extension MatrixSQLiteStore: MatrixStore {
         }
     }
 
-    public func getAccountInfo(accountID: MatrixUserIdentifier) async throws -> MatrixSQLAccountInfo {
+    public func getAccountInfo(accountID: MatrixFullUserIdentifier) async throws -> MatrixSQLAccountInfo {
         let account = try await dbWriter.read { db in
-            try MatrixSQLAccountInfo.fetchOne(db, key: accountID.FQMXID!)
+            try MatrixSQLAccountInfo.fetchOne(db, key: accountID.FQMXID)
         }
 
         guard var account = account else {
@@ -67,6 +80,13 @@ extension MatrixSQLiteStore: MatrixStore {
             account.accessToken = try MatrixSQLAccountInfo.getFromKeychain(account: account.mxID)
             return account
         }
+    }
+
+    public func deleteAccountInfo(account: MatrixSQLAccountInfo) async throws {
+        _ = try await dbWriter.write { db in
+            try account.delete(db)
+        }
+        try account.deleteFromKeychain()
     }
 }
 

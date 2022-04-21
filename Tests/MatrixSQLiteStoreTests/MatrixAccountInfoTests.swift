@@ -16,7 +16,12 @@ class AccountInfoTests: XCTestCase {
         let store = try MatrixSQLiteStore(dbQueue)
 
         let id = MatrixUserIdentifier(rawValue: "@test:example.com")!
-        let data = MatrixSQLAccountInfo(name: "test", mxID: id, homeServer: MatrixHomeserver(string: "https://example.com")!, accessToken: "secret")
+        let data = MatrixSQLAccountInfo(
+            name: "test",
+            mxID: id,
+            homeServer: MatrixHomeserver(string: "https://example.com")!,
+            accessToken: "secret"
+        )
 
         defer {
             try! data.deleteFromKeychain()
