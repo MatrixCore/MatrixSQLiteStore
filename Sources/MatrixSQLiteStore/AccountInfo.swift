@@ -16,13 +16,32 @@ public struct MatrixSQLAccountInfo: MatrixStoreAccountInfo {
         displayName: String? = nil,
         mxID: MatrixFullUserIdentifier,
         homeServer: MatrixHomeserver,
-        accessToken: String? = nil
+        accessToken: String? = nil,
+        deviceID: String
     ) {
         self.name = name
         self.displayName = displayName
         self.mxID = mxID
         self.homeServer = homeServer
         self.accessToken = accessToken
+        self.deviceID = deviceID
+    }
+
+    public init?(_ homeserver: MatrixHomeserver, login: MatrixLogin) {
+        guard let mxID = login.userId,
+              let accessToken = login.accessToken,
+              let deviceID = login.deviceId
+        else {
+            return nil
+        }
+        self.init(
+            name: mxID.localpart,
+            displayName: nil,
+            mxID: mxID,
+            homeServer: homeserver,
+            accessToken: accessToken,
+            deviceID: deviceID
+        )
     }
 
     public typealias AccountIdentifier = MatrixFullUserIdentifier
@@ -36,6 +55,8 @@ public struct MatrixSQLAccountInfo: MatrixStoreAccountInfo {
     public var homeServer: MatrixHomeserver
 
     public var accessToken: String?
+
+    public var deviceID: String
 }
 
 extension MatrixSQLAccountInfo: Codable, FetchableRecord, PersistableRecord {
@@ -46,5 +67,6 @@ extension MatrixSQLAccountInfo: Codable, FetchableRecord, PersistableRecord {
         case displayName
         case mxID = "id"
         case homeServer = "homeserver"
+        case deviceID = "device_id"
     }
 }

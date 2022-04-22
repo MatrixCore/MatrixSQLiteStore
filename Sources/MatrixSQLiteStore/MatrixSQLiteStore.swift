@@ -41,6 +41,7 @@ public struct MatrixSQLiteStore {
                 t.column("name", .text).notNull()
                 t.column("displayName", .text)
                 t.column("homeserver", .text).notNull()
+                t.column("device_id", .text).notNull()
             }
         }
 
