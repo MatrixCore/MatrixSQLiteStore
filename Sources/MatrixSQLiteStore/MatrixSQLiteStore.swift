@@ -45,6 +45,25 @@ public struct MatrixSQLiteStore {
             }
         }
 
+        migrator.registerMigration("createRoomsAndMessages") { db in
+            try db.create(table: "room_state") { t in
+                t.column("event_id", .text).notNull().primaryKey()
+                t.column("room_id", .text).notNull().indexed()
+                t.column("type", .text).notNull()
+                t.column("state_key", .text)
+                t.column("content", .text)
+            }
+
+            try db.create(
+                index: "room_state_type_key_index",
+                on: "room_state",
+                columns: ["room_id", "type", "state_key"],
+                options: .unique
+            )
+
+            try db.create(index: "room_state_type_index", on: "room_state", columns: ["room_id", "type"])
+        }
+
         return migrator
     }
 }
