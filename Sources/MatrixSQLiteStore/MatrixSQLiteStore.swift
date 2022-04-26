@@ -4,6 +4,8 @@ import GRDB
 import MatrixClient
 import MatrixCore
 
+@available(swift, introduced: 5.5)
+@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 public struct MatrixSQLiteStore {
     var dbWriter: DatabaseWriter
 
@@ -17,6 +19,9 @@ public struct MatrixSQLiteStore {
         try migrate()
     }
 
+    /// Create a database in memory, useful to feed previews with data.
+    ///
+    /// This uses a `DatabaseQueue`, therefore a not advised for production use.
     public static func inMemory() -> Self {
         try! MatrixSQLiteStore(DatabaseQueue())
     }
@@ -47,7 +52,7 @@ public struct MatrixSQLiteStore {
 
         migrator.registerMigration("createRoomsAndMessages") { db in
             try db.create(table: "room_state") { t in
-                t.column("event_id", .text).notNull().primaryKey()
+                t.column("event_id", .text).notNull().primaryKey().unique(onConflict: .replace)
                 t.column("room_id", .text).notNull().indexed()
                 t.column("type", .text).notNull()
                 t.column("state_key", .text)

@@ -12,17 +12,45 @@ import MatrixClient
 import MatrixCore
 
 public struct MatrixRoomState: MatrixStoreRoomState {
+    public init(roomId: String, event: MatrixStateEvent) throws {
+        guard let eventId = event.eventID,
+              let sender = event.sender
+        else {
+            throw MatrixCodableStateEventType.StateTypeError.missingTypes
+        }
+        self.eventId = eventId
+        self.roomId = roomId
+        stateKey = event.stateKey
+        // self.sender = sender
+        _content = event
+    }
+
     public var eventId: String
     public var roomId: String
 
     public var stateKey: String
 
+    public var sender: MatrixFullUserIdentifier? {
+        _content.sender
+    }
+
     // TODO: custom type in MatrixClient?
-    public var contentType: String
+    public var contentType: String {
+        type(of: content).type
+    }
 
     // TODO: some event type?
-    @MatrixCodableStateEventType
-    public var content: MatrixStateEventType
+    // @MatrixCodableStateEventType
+    private var _content: MatrixStateEvent
+
+    public var content: MatrixStateEventType {
+        get {
+            _content.content
+        }
+        set {
+            _content.content = newValue
+        }
+    }
 }
 
 extension MatrixRoomState: Codable, FetchableRecord, PersistableRecord, Equatable, Hashable {
@@ -50,14 +78,21 @@ extension MatrixRoomState: Codable, FetchableRecord, PersistableRecord, Equatabl
         case content
     }
 
+    enum Columns {
+        static let eventId = Column(CodingKeys.eventId)
+        static let roomId = Column(CodingKeys.roomId)
+        static let contentType = Column(CodingKeys.contentType)
+        static let stateKey = Column(CodingKeys.stateKey)
+        static let content = Column(CodingKeys.content)
+    }
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         eventId = try container.decode(String.self, forKey: .eventId)
         roomId = try container.decode(String.self, forKey: .roomId)
         stateKey = try container.decode(String.self, forKey: .stateKey)
-        contentType = try container.decode(String.self, forKey: .contentType)
 
-        _content = try MatrixCodableStateEventType(from: container.superDecoder(forKey: .content), typeID: contentType)
+        _content = try container.decode(MatrixStateEvent.self, forKey: .content)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -67,7 +102,7 @@ extension MatrixRoomState: Codable, FetchableRecord, PersistableRecord, Equatabl
         try container.encode(stateKey, forKey: .stateKey)
         try container.encode(contentType, forKey: .contentType)
 
-        try _content.encode(to: encoder)
+        try container.encode(_content, forKey: .content)
     }
 
     /* public static func databaseJSONEncoder(for column: String) -> JSONEncoder {
@@ -98,13 +133,21 @@ public extension MatrixSQLiteStore {
 
     func addRoomState(state: MatrixRoomState) async throws {
         try await dbWriter.write { db in
+            try? db.execute(
+                sql: "DELETE FROM \"\(MatrixRoomState.databaseTableName)\" INDEXED BY \"room_state_type_key_index\" WHERE room_id = ? AND type = ? AND state_key = ?",
+                arguments: [state.roomId, state.contentType, state.stateKey]
+            )
             try state.insert(db)
         }
     }
 
     func getRoomState(roomId: String) async throws -> [RoomState] {
         try await dbWriter.read { db in
-            try RoomState.fetchAll(db, sql: "SELECT * FROM room_state WHERE room_id = ?", arguments: [roomId])
+            try RoomState.fetchAll(
+                db,
+                sql: "SELECT * FROM room_state INDEXED BY room_state_on_room_id WHERE room_id = ?",
+                arguments: [roomId]
+            )
         }
     }
 
@@ -134,6 +177,7 @@ public extension MatrixSQLiteStore {
         }
     }
 
+    /// - Throws: An error of type ``DatabaseError``
     func getRoomState(roomId: String, stateType: String, stateKey: String) async throws -> [RoomState] {
         try await dbWriter.read { db in
             try RoomState.fetchAll(

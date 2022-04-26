@@ -15,12 +15,13 @@ class AccountInfoTests: XCTestCase {
         let dbQueue = DatabaseQueue()
         let store = try MatrixSQLiteStore(dbQueue)
 
-        let id = MatrixUserIdentifier(rawValue: "@test:example.com")!
+        let id = MatrixFullUserIdentifier(string: "@test:example.com")!
         let data = MatrixSQLAccountInfo(
             name: "test",
             mxID: id,
             homeServer: MatrixHomeserver(string: "https://example.com")!,
-            accessToken: "secret"
+            accessToken: "secret",
+            deviceID: "test"
         )
 
         defer {
@@ -40,11 +41,23 @@ class AccountInfoTests: XCTestCase {
         let store = try MatrixSQLiteStore(dbQueue)
         let homeserver = MatrixHomeserver(string: "https://example.com")!
 
-        let id1 = MatrixUserIdentifier(locapart: "test1", domain: "example.com")
-        let data1 = MatrixSQLAccountInfo(name: "test1", mxID: id1, homeServer: homeserver, accessToken: "secret2")
+        let id1 = MatrixFullUserIdentifier(localpart: "test1", domain: "example.com")
+        let data1 = MatrixSQLAccountInfo(
+            name: "test1",
+            mxID: id1,
+            homeServer: homeserver,
+            accessToken: "secret2",
+            deviceID: "test"
+        )
 
-        let id2 = MatrixUserIdentifier(locapart: "test2", domain: "example.com")
-        let data2 = MatrixSQLAccountInfo(name: "test2", mxID: id2, homeServer: homeserver, accessToken: "secret2")
+        let id2 = MatrixFullUserIdentifier(localpart: "test2", domain: "example.com")
+        let data2 = MatrixSQLAccountInfo(
+            name: "test2",
+            mxID: id2,
+            homeServer: homeserver,
+            accessToken: "secret2",
+            deviceID: "test"
+        )
 
         defer {
             try! data1.deleteFromKeychain()
