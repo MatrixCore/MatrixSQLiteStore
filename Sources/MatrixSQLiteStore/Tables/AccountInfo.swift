@@ -12,6 +12,7 @@ import MatrixCore
 
 public struct MatrixSQLAccountInfo: MatrixStoreAccountInfo {
     public init(
+        id: Int? = nil,
         name: String,
         displayName: String? = nil,
         mxID: MatrixFullUserIdentifier,
@@ -19,6 +20,7 @@ public struct MatrixSQLAccountInfo: MatrixStoreAccountInfo {
         accessToken: String? = nil,
         deviceID: String
     ) {
+        self.id = id
         self.name = name
         self.displayName = displayName
         self.mxID = mxID
@@ -46,6 +48,8 @@ public struct MatrixSQLAccountInfo: MatrixStoreAccountInfo {
 
     public typealias AccountIdentifier = MatrixFullUserIdentifier
 
+    public var id: Int?
+
     public var name: String
 
     public var displayName: String?
@@ -59,13 +63,26 @@ public struct MatrixSQLAccountInfo: MatrixStoreAccountInfo {
     public var deviceID: String
 }
 
-extension MatrixSQLAccountInfo: Codable, FetchableRecord, PersistableRecord {
+public extension MatrixSQLAccountInfo {
+    static let roomAccount = hasMany(MatrixStoreRoomAccount.self)
+    var roomAccount: QueryInterfaceRequest<MatrixStoreRoomAccount> {
+        request(for: Self.roomAccount)
+    }
+
+    static let room = hasMany(MatrixStoreRoom.self, through: roomAccount, using: MatrixStoreRoomAccount.room)
+    var room: QueryInterfaceRequest<MatrixStoreRoom> {
+        request(for: Self.room)
+    }
+}
+
+extension MatrixSQLAccountInfo: Codable, TableRecord, FetchableRecord, PersistableRecord {
     public static var databaseTableName: String = "account"
 
     enum CodingKeys: String, CodingKey {
+        case id
         case name
         case displayName
-        case mxID = "id"
+        case mxID = "mxid"
         case homeServer = "homeserver"
         case deviceID = "device_id"
     }

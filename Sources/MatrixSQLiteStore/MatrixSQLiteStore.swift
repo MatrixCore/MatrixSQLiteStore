@@ -37,51 +37,80 @@ public struct MatrixSQLiteStore {
         #if DEBUG
             // Speed up development by nuking the database when migrations change
             // See https://github.com/groue/GRDB.swift/blob/master/Documentation/Migrations.md#the-erasedatabaseonschemachange-option
-            migrator.eraseDatabaseOnSchemaChange = true
+            migrator.eraseDatabaseOnSchemaChange = false // TODO: reenable
         #endif
 
-        migrator.registerMigration("createAccount") { db in
+        migrator.registerMigration("init") { db in
             try db.create(table: "account") { t in
-                t.column("id", .text).notNull().indexed().primaryKey().unique()
+                t.column("id", .integer).notNull().primaryKey(autoincrement: true).unique()
+                t.column("mxid", .text).notNull().indexed().unique()
                 t.column("name", .text).notNull()
                 t.column("displayName", .text)
                 t.column("homeserver", .text).notNull()
                 t.column("device_id", .text).notNull()
             }
+
+            try db.create(table: "handle") { t in
+                t.column("id", .integer).notNull().primaryKey(autoincrement: true).unique()
+                t.column("mxid", .text).notNull().indexed()
+                t.column("display_name", .text)
+                t.column("avatar_url", .text)
+                t.column("avatar_file", .text)
+            }
         }
 
-        migrator.registerMigration("createRoomsAndMessages") { db in
-            try db.create(table: "room_state") { t in
-                t.column("event_id", .text).notNull().primaryKey().unique(onConflict: .replace)
-                t.column("room_id", .text).notNull().indexed()
+        migrator.registerMigration("events") { db in
+            try db.create(table: "event") { t in
+                t.column("streaming_order", .integer).unique().notNull().primaryKey(autoincrement: true)
+                t.column("topological_ordering", .integer).notNull()
+                t.column("event_id", .text).notNull().unique().indexed()
+                // t.column("room_id", .text).notNull()
+                t.column("room_id", .integer).references("room", onDelete: .cascade).notNull()
                 t.column("type", .text).notNull()
                 t.column("state_key", .text)
+                t.column("printable", .boolean)
+                t.column("sender_id", .integer).references("handle", column: "id", onDelete: .cascade).notNull()
                 t.column("content", .text)
             }
 
             try db.create(
-                index: "room_state_type_key_index",
-                on: "room_state",
-                columns: ["room_id", "type", "state_key"],
-                options: .unique
+                index: "events_order_room",
+                on: "event",
+                columns: ["room_id", "topological_ordering", "streaming_order"]
             )
 
-            try db.create(index: "room_state_type_index", on: "room_state", columns: ["room_id", "type"])
+            try db.create(table: "room") { t in
+                t.column("id", .integer).primaryKey(autoincrement: true).unique()
+                t.column("room_id", .text).notNull()
+                t.column("displayname", .text)
+                t.column("avatar_url", .text)
+                t.column("avatar_file", .text)
+                t.column("alias", .text)
+                t.column("topic", .text)
+                t.column("version", .text)
+            }
+
+            try db.create(table: "room_account_join") { t in
+                t.column("account_id", .text).references("account", column: "id", onDelete: .cascade).notNull()
+                t.column("room_id", .text).references("room", onDelete: .cascade).notNull()
+                t.column("local_muted", .boolean).defaults(to: false)
+                // t.column("local_name", .text)
+            }
         }
 
         return migrator
     }
 }
 
-extension MatrixSQLiteStore: MatrixStore {
-    public func saveAccountInfo(account: MatrixSQLAccountInfo) async throws {
+public extension MatrixSQLiteStore /*: MatrixStore */ {
+    func saveAccountInfo(account: MatrixSQLAccountInfo) async throws {
         try await dbWriter.write { [account] db in
             try account.save(db)
             try account.saveToKeychain()
         }
     }
 
-    public func getAccountInfo(accountID: MatrixFullUserIdentifier) async throws -> MatrixSQLAccountInfo {
+    func getAccountInfo(accountID: MatrixFullUserIdentifier) async throws -> MatrixSQLAccountInfo {
         let account = try await dbWriter.read { db in
             try MatrixSQLAccountInfo.fetchOne(db, key: accountID.FQMXID)
         }
@@ -95,7 +124,7 @@ extension MatrixSQLiteStore: MatrixStore {
         return account
     }
 
-    public func getAccountInfos() async throws -> [MatrixSQLAccountInfo] {
+    func getAccountInfos() async throws -> [MatrixSQLAccountInfo] {
         let accounts = try await dbWriter.read { db in
             try MatrixSQLAccountInfo.fetchAll(db)
         }
@@ -107,7 +136,7 @@ extension MatrixSQLiteStore: MatrixStore {
         }
     }
 
-    public func deleteAccountInfo(account: MatrixSQLAccountInfo) async throws {
+    func deleteAccountInfo(account: MatrixSQLAccountInfo) async throws {
         _ = try await dbWriter.write { db in
             try account.delete(db)
         }

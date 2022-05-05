@@ -133,10 +133,10 @@ public extension MatrixSQLiteStore {
 
     func addRoomState(state: MatrixRoomState) async throws {
         try await dbWriter.write { db in
-            try? db.execute(
-                sql: "DELETE FROM \"\(MatrixRoomState.databaseTableName)\" INDEXED BY \"room_state_type_key_index\" WHERE room_id = ? AND type = ? AND state_key = ?",
-                arguments: [state.roomId, state.contentType, state.stateKey]
-            )
+            /* try? db.execute(
+                 sql: "DELETE FROM \"\(MatrixRoomState.databaseTableName)\" INDEXED BY \"room_state_type_key_index\" WHERE room_id = ? AND type = ? AND state_key = ?",
+                 arguments: [state.roomId, state.contentType, state.stateKey]
+             ) */
             try state.insert(db)
         }
     }
